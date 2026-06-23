@@ -743,9 +743,9 @@ io.on("connection", (socket) => {
           activeP.gold += refund;
           
           actionMsg = `${tile.name} 무대 반값 강제 매각 (+${refund}골드)`;
-          sendSystemChatMessage(roomCode, `📉 부동산 대폭락! ${activeP.name} 님의 ${tile.name} 기지가 ${refund}골드에 강제 처분되어 매각되었습니다.`);
+          sendSystemChatMessage(roomCode, `📉 부동산 대폭락! ${activeP.name} 님의 ${tile.name} 무대가 ${refund}골드에 강제 처분되어 매각되었습니다.`);
         } else {
-          actionMsg = `소유한 기지가 없어 대폭락 피해를 면했습니다!`;
+          actionMsg = `소유한 무대가 없어 대폭락 피해를 면했습니다!`;
         }
       } else if (card.id === "gold_redistribution") {
         let activePlayers = room.players.filter(p => p.gold > 0);
@@ -756,7 +756,7 @@ io.on("connection", (socket) => {
             p.gold = fairShare;
           });
           actionMsg = `전체 골드를 균등 분배 완료!`;
-          sendSystemChatMessage(roomCode, `⚖️ 에너지 균형! 생존 플레이어들의 골드가 각 ${fairShare}골드로 평등하게 분배되었습니다.`);
+          sendSystemChatMessage(roomCode, `⚖️ 평균율 조율! 생존 플레이어들의 골드가 각 ${fairShare}골드로 평등하게 분배되었습니다.`);
         } else {
           actionMsg = `활성화된 플레이어가 없습니다.`;
         }
@@ -764,13 +764,13 @@ io.on("connection", (socket) => {
         let propertyCount = activeP.properties.length;
         let tax = propertyCount * 20;
         activeP.gold = Math.max(0, activeP.gold - tax);
-        actionMsg = `기지 점검 수수료 ${tax}골드 지불!`;
+        actionMsg = `악기 점검 수수료 ${tax}골드 지불!`;
         checkPlayerBankruptcy(roomCode, room.gameState.activePlayerIdx);
       } else if (card.id === "property_bonus") {
         let propertyCount = activeP.properties.length;
         let bonus = propertyCount * 50;
         activeP.gold += bonus;
-        actionMsg = `특허권 기술료 ${bonus}골드 획득!`;
+        actionMsg = `저작권료 보너스 ${bonus}골드 획득!`;
       }
     }
 

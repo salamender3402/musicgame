@@ -850,7 +850,7 @@ socket.on("triggerTileAction", ({ tile }) => {
       break;
 
     case "warp": {
-      // Land on 상태 변화 터널 -> Show confirmation modal
+      // Land on 타임머신 -> Show confirmation modal
       const warpLandModal = document.getElementById("warp-land-modal");
       const warpConfirmBtn = document.getElementById("warp-land-confirm-btn");
       if (warpLandModal && warpConfirmBtn) {
@@ -994,16 +994,16 @@ function triggerArrivalModal(tile) {
 function triggerQuizModal(tile) {
   const trivia = tile.trivia;
 
-  let eraK = "입자 운동 및 상태";
-  if (tile.era === "classical") eraK = "열에너지 흡수";
-  if (tile.era === "romantic") eraK = "열에너지 방출";
-  if (tile.era === "modern") eraK = "상태 변화와 생활";
+  let eraK = "르네상스 & 바로크 시대";
+  if (tile.era === "classical") eraK = "고전주의 시대";
+  if (tile.era === "romantic") eraK = "낭만주의 시대";
+  if (tile.era === "modern") eraK = "근현대 음악 시대";
 
   const eraBadge = document.getElementById("quiz-tile-era");
   eraBadge.className = `badge era-badge-${tile.era}`;
   eraBadge.innerText = eraK;
 
-  document.getElementById("quiz-tile-name").innerText = `[개념] ${tile.name}`;
+  document.getElementById("quiz-tile-name").innerText = `[곡명] ${tile.name}`;
   document.getElementById("quiz-question-text").innerText = trivia.question;
 
   const container = document.getElementById("quiz-options-container");
@@ -1350,7 +1350,7 @@ socket.on("closeSpecialModal", () => {
   specialCardEl.onclick = null;
 });
 
-// E. 상태 변화 터널 도약 (Warp machine)
+// E. 타임머신 도약 (Warp machine)
 warpActionBtn.addEventListener("click", () => {
   openWarpSelection();
 });
@@ -1482,6 +1482,16 @@ let animFrameId = null;
 function resize() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
+  if (typeof currentRoom !== "undefined" && currentRoom) {
+    currentRoom.players.forEach((p, idx) => {
+      const visual = playerVisualPositions[idx];
+      if (visual && !visual.isAnimating) {
+        visual.x = null;
+        visual.y = null;
+      }
+    });
+    updateTokenDisplay(currentRoom);
+  }
 }
 window.addEventListener("resize", resize);
 resize();
