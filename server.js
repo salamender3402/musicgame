@@ -49,7 +49,7 @@ const boardTemplate = [
   { index: 12, name: "합창 교향곡", composer: "베토벤", type: "music", era: "classical", price: 240, upgradePrice: 120, baseToll: 45, tolls: [0,45,90,180,315], owner: null, level: 0,
     trivia: { question: "Q. 베토벤의 \"합창\" 교향곡 제4악장에서 인류애를 주제로 한 어떤 시인의 시를 노랫말로 삼았는가?", options: ["실러", "베를렌", "입센", "호프만"], answer: "실러" } },
   { index: 13, name: "황제 4중주", composer: "하이든", type: "music", era: "classical", price: 260, upgradePrice: 130, baseToll: 50, tolls: [0,50,100,200,350], owner: null, level: 0,
-    trivia: { question: "Q. 하이든의 \"황제\"나 \"종달새\"와 같이 '고전주의 시대에 가장 성행했던 실내악 연주 형태'로, 2대의 바이올린과 비올라, 첼로가 함께 연주하는 형태는?", options: ["현악 4중주", "합창", "독주", "독창"], answer: "현악 4중주" } },
+    trivia: { question: "Q. 하이든의 \"황제\"나 \"종달새\"와 같이 '고전주의 시대에 가장 성행했던 실내악 연주 형태'로, 2대의 바이올린 and 비올라, 첼로가 함께 연주하는 형태는?", options: ["현악 4중주", "합창", "독주", "독창"], answer: "현악 4중주" } }, // Wait, in the classical 13 let's make sure text is identical
   { index: 14, name: "역사적 찬스", composer: "CHANCE", type: "chance", era: null, price: 0, baseToll: 0, tolls: [0,0,0,0,0] },
   { index: 15, name: "운명 교향곡", composer: "베토벤", type: "music", era: "classical", price: 280, upgradePrice: 140, baseToll: 55, tolls: [0,55,110,220,385], owner: null, level: 0,
     trivia: { question: "Q. 다음 중 교과서에서 베토벤의 작품이자 교향곡으로 명시된 곡은?", options: ["운명 교향곡", "놀람 교향곡", "수상 음악", "사계"], answer: "운명 교향곡" } },
@@ -85,13 +85,34 @@ const boardTemplate = [
 
 // Chance Card List
 const serverChanceCards = [
-  { title: "그레고리오의 계시", description: "새로운 4선 기보법을 창안하여 교회로부터 격려금을 받았습니다! 즉시 150골드를 획득합니다.", type: "gold", amount: 150 },
-  { title: "베토벤의 시련", description: "청각 장애 극복을 위한 요양비용으로 큰 지출이 발생했습니다. 100골드를 은행에 지불합니다.", type: "gold", amount: -100 },
-  { title: "악보 인쇄 혁명", description: "활자 인쇄 악보집 '오데카톤'이 대성공을 거두었습니다! 보너스 200골드를 받습니다.", type: "gold", amount: 200 },
-  { title: "바흐의 은총", description: "음악의 신 바흐의 가호를 받아 START(공공 음악회) 칸으로 즉시 이동합니다.", type: "warp", target: 0 },
-  { title: "시공의 붕괴", description: "우주 여행을 할 수 있는 '타임머신' 칸으로 즉시 이동합니다.", type: "warp", target: 16 },
-  { title: "기부 음악회 후원", description: "가난한 예술가들을 지원하기 위한 기부 음악회를 개최합니다. 기부금 100골드를 냅니다.", type: "gold", amount: -100 },
-  { title: "쇤베르크의 불협화음", description: "전통 조성을 파괴하는 난해한 12음 기법을 듣고 깜짝 놀랐습니다. 정신적 충격으로 3칸 뒤로 이동합니다.", type: "step", steps: -3 }
+  { id: "gold_quest", title: "그레고리오의 계시", description: "새로운 4선 기보법을 창안하여 교회로부터 격려금을 받았습니다! 즉시 150골드를 획득합니다.", type: "gold", amount: 150 },
+  { id: "gold_break", title: "베토벤의 시련", description: "청각 장애 극복을 위한 요양비용으로 큰 지출이 발생했습니다. 100골드를 은행에 지불합니다.", type: "gold", amount: -100 },
+  { id: "gold_thesis", title: "악보 인쇄 혁명", description: "활자 인쇄 악보집 '오데카톤'이 대성공을 거두었습니다! 보너스 200골드를 받습니다.", type: "gold", amount: 200 },
+  { id: "warp_start", title: "바흐의 은총", description: "음악의 신 바흐의 가호를 받아 START(공공 음악회) 칸으로 즉시 이동합니다.", type: "warp", target: 0 },
+  { id: "warp_tunnel", title: "시공의 붕괴", description: "우주 여행을 할 수 있는 '타임머신' 칸으로 즉시 이동합니다.", type: "warp", target: 16 },
+  { id: "gold_donation", title: "기부 음악회 후원", description: "가난한 예술가들을 지원하기 위한 기부 음악회를 개최합니다. 기부금 100골드를 냅니다.", type: "gold", amount: -100 },
+  { id: "step_expansion", title: "쇤베르크의 불협화음", description: "전통 조성을 파괴하는 난해한 12음 기법을 듣고 깜짝 놀랐습니다. 정신적 충격으로 3칸 뒤로 이동합니다.", type: "step", steps: -3 },
+  
+  // Custom Gimmick Cards
+  { id: "yellow_dust", title: "독일 가곡 전파", description: "감미로운 독일 예술 가곡(Lied)이 널리 전파되었습니다. 나를 제외한 모든 플레이어가 가곡 티켓 구입비 50골드씩 나에게 지불합니다.", type: "custom" },
+  { id: "expo_donation", title: "베토벤 재단 후원", description: "음악 유산 보존을 위해 가장 부유한 플레이어가 100골드를 은행에 기부하고, 가장 가난한 플레이어가 지원금 100골드를 받습니다.", type: "custom" },
+  { id: "property_crash", title: "음악 무대 폐쇄", description: "지역 축제 취소로 인해 보유 무대 중 가장 가격이 높은 음악 무대 1곳이 반값에 강제 처분되어 매각됩니다.", type: "custom" },
+  { id: "gold_redistribution", title: "바흐의 평균율", description: "모든 소리는 고르게 나누어져야 합니다. 현재 생존한 모든 플레이어의 보유 골드를 합산하여 똑같이 균등하게 분배합니다.", type: "custom" },
+  { id: "property_tax", title: "악기 안전 검사", description: "소유한 모든 음악 무대에 악기 안전 점검이 시작됩니다. 보유한 무대 1개당 20골드씩 검사비를 납부합니다.", type: "custom" },
+  { id: "property_bonus", title: "음반 로열티 보너스", description: "작곡한 명곡의 음반 판매가 대성공을 거두었습니다! 소유한 무대 1개당 50골드씩 저작권료 보너스를 획득합니다.", type: "custom" },
+  { id: "warp_trap", title: "침묵의 우주 폭풍", description: "강력한 불협화음의 폭풍에 휩쓸려 소리가 모두 차단된 4분 33초의 방으로 강제 전송되어 갇힙니다.", type: "warp", target: 8 },
+  { id: "gold_scholarship", title: "모차르트 음악 장학금", description: "클래식 미래 인재로 선정되어 음악 장학재단으로부터 무상 장학금 100골드를 지급받습니다.", type: "gold", amount: 100 }
+];
+
+// Special Card List (서양음악사 스페셜)
+const serverSpecialCards = [
+  { id: "gold_gain_300", title: "왕실 음악 후원금", description: "왕실로부터 위대한 교향곡 창작에 대한 포상으로 300골드의 특별 후원금을 획득합니다.", type: "special" },
+  { id: "gold_donate_300", title: "베토벤 음악 재단 기부", description: "난청 예술가 지원과 음악 유산 보존을 위해 음악 재단에 300골드를 기부합니다.", type: "special" },
+  { id: "property_discount_takeover", title: "음악 무대 반값 인수", description: "원하는 상대방의 음악 무대 중 하나를 반값에 특별 인수할 수 있는 명예로운 권리를 획득합니다. (게임 당 단 1회 발동, 4% 확률)", type: "special" },
+  { id: "property_upgrade", title: "무대 무료 업그레이드", description: "내가 소유한 음악 무대 중 하나를 선택하여 무료로 1단계 업그레이드(공작의 음악실 등)합니다.", type: "special" },
+  { id: "move_to_trap", title: "4분 33초의 방으로 이동", description: "침묵의 연주가 흐르는 John Cage의 '4분 33초의 방'으로 강제 전송되어 침묵에 잠깁니다.", type: "special" },
+  { id: "gold_double_5", title: "명작 악보 출판 대박", description: "새로 출판한 협주곡 악보가 대성공을 거두며 출판 인세로 현재 보유한 골드가 2배가 됩니다! (5% 확률)", type: "special" },
+  { id: "gold_half_5", title: "악기 도난 및 무대 화재", description: "갑작스러운 무대 화재와 악기 도난으로 인해 현재 보유한 골드가 반토막(50% 차감) 납니다. (5% 확률)", type: "special" }
 ];
 
 // Helper: Generate a unique room code
@@ -102,6 +123,17 @@ function generateRoomCode() {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return code;
+}
+
+// Helper: Calculate dynamic multiplier based on rounds (turnCount) to manage gold inflation
+function getRoundMultiplier(turnCount) {
+  if (!turnCount || turnCount <= 9) return 1.0;
+  if (turnCount <= 14) {
+    // Round 10 to 14: scale from 1.2 to 2.0
+    return 1.0 + (turnCount - 9) * 0.2;
+  }
+  // Round 15+: scale from 2.0 + 0.45 per round (2.45 at Rd 15, 4.70 at Rd 20)
+  return 2.0 + (turnCount - 14) * 0.45;
 }
 
 io.on("connection", (socket) => {
@@ -262,12 +294,11 @@ io.on("connection", (socket) => {
     // Update player position
     activeP.position = (activeP.position + total) % 32;
 
-    // Check passed START (START is Index 0)
-    // If the new position is numerically less than the old position, the player wrapped around START
     let passedStart = false;
     if (activeP.position < oldPosition) {
       passedStart = true;
       activeP.gold += 200;
+      sendSystemChatMessage(roomCode, `🎻 ${activeP.name} 님이 공공 음악회(START)를 통과하여 공연 보조금 200골드를 획득하셨습니다.`);
     }
 
     // Broadcast roll animation details to everyone
@@ -454,7 +485,12 @@ io.on("connection", (socket) => {
     const tile = room.gameState.boardTiles[tileIndex];
     const ownerIndex = tile.owner;
     const owner = room.players[ownerIndex];
-    const toll = tile.tolls[tile.level];
+    
+    // Apply round multiplier to the toll fee
+    const turnCount = room.gameState.turnCount || 1;
+    const roundMult = getRoundMultiplier(turnCount);
+    const baseToll = tile.tolls[tile.level];
+    const toll = Math.floor(baseToll * roundMult);
 
     // Transfer gold
     const actualToll = Math.min(activeP.gold, toll);
@@ -482,7 +518,12 @@ io.on("connection", (socket) => {
     const tile = room.gameState.boardTiles[tileIndex];
     const ownerIndex = tile.owner;
     const owner = room.players[ownerIndex];
-    const toll = tile.tolls[tile.level];
+    
+    // Apply round multiplier to the toll fee
+    const turnCount = room.gameState.turnCount || 1;
+    const roundMult = getRoundMultiplier(turnCount);
+    const baseToll = tile.tolls[tile.level];
+    const toll = Math.floor(baseToll * roundMult);
 
     // 1. Pay Toll
     const actualToll = Math.min(activeP.gold, toll);
@@ -497,7 +538,12 @@ io.on("connection", (socket) => {
     // 2. Perform Takeover if active player is not bankrupt
     if (activeP.gold > 0) {
       const originalValue = tile.price + (tile.level - 1) * tile.upgradePrice;
-      const takeoverCost = originalValue * 2;
+      let multiplier = 2.0;
+      if (tile.level === 1) multiplier = 1.5;
+      else if (tile.level === 3) multiplier = 2.5;
+      
+      // Apply round multiplier to takeover cost
+      const takeoverCost = Math.floor(originalValue * multiplier * roundMult);
 
       if (activeP.gold >= takeoverCost) {
         activeP.gold -= takeoverCost;
@@ -572,10 +618,10 @@ io.on("connection", (socket) => {
     if (targetIndex < oldPos) {
       passedStart = true;
       activeP.gold += 200;
-      sendSystemChatMessage(roomCode, `${activeP.name} 님이 시간의 관문을 넘어 200골드를 획득하셨습니다.`);
+      sendSystemChatMessage(roomCode, `🎻 ${activeP.name} 님이 공공 음악회(START)를 통과하여 공연 보조금 200골드를 획득하셨습니다.`);
     }
 
-    sendSystemChatMessage(roomCode, `${activeP.name} 님이 ${room.gameState.boardTiles[targetIndex].name} 칸으로 우주 점프했습니다.`);
+    sendSystemChatMessage(roomCode, `${activeP.name} 님이 ${room.gameState.boardTiles[targetIndex].name} 칸으로 시간 여행을 통해 도약했습니다.`);
     
     io.to(roomCode).emit("roomStateUpdate", room);
 
@@ -591,9 +637,28 @@ io.on("connection", (socket) => {
     const activeP = room.players[room.gameState.activePlayerIdx];
     if (activeP.socketId !== socket.id) return;
 
-    // Draw card
-    const cardIdx = Math.floor(Math.random() * serverChanceCards.length);
-    const card = serverChanceCards[cardIdx];
+    // Initialize custom card tracking counters if not present
+    if (room.gameState.redistributionCount === undefined) room.gameState.redistributionCount = 0;
+    if (room.gameState.propertyCrashCount === undefined) room.gameState.propertyCrashCount = 0;
+
+    // Draw card with customized probabilities
+    const r = Math.random();
+    let card = null;
+
+    if (r < 0.01 && room.gameState.redistributionCount < 1) {
+      card = serverChanceCards.find(c => c.id === "gold_redistribution");
+      room.gameState.redistributionCount++;
+    } else if (r >= 0.01 && r < 0.02 && room.gameState.propertyCrashCount < 2) {
+      card = serverChanceCards.find(c => c.id === "property_crash");
+      room.gameState.propertyCrashCount++;
+    }
+
+    // Fallback: draw one of the other 13 normal cards uniformly
+    if (!card) {
+      const normalCards = serverChanceCards.filter(c => c.id !== "gold_redistribution" && c.id !== "property_crash");
+      const cardIdx = Math.floor(Math.random() * normalCards.length);
+      card = normalCards[cardIdx];
+    }
 
     let actionMsg = "";
     if (card.type === "gold") {
@@ -607,17 +672,106 @@ io.on("connection", (socket) => {
       // Warp directly
       const oldPos = activeP.position;
       activeP.position = card.target;
-      if (card.target < oldPos) {
-        activeP.gold += 200;
+      if (card.target === 8) {
+        activeP.isTrapped = true;
+        activeP.trappedTurns = 3;
+        actionMsg = `4분 33초의 방으로 즉시 이동하여 갇힘!`;
+      } else {
+        if (card.target < oldPos) {
+          activeP.gold += 200;
+          sendSystemChatMessage(roomCode, `🎻 ${activeP.name} 님이 공공 음악회(START)를 통과하여 공연 보조금 200골드를 획득하셨습니다.`);
+        }
+        if (card.target === 16) {
+          activeP.hasWarpPending = true;
+        }
+        actionMsg = `${room.gameState.boardTiles[card.target].name} 칸으로 즉시 이동!`;
       }
-      if (card.target === 16) {
-        activeP.hasWarpPending = true;
-      }
-      actionMsg = `${room.gameState.boardTiles[card.target].name} 칸으로 즉시 이동!`;
     } else if (card.type === "step") {
       // Step back/forward
       activeP.position = (activeP.position + card.steps + 32) % 32;
       actionMsg = `${Math.abs(card.steps)}칸 뒤로 이동!`;
+    } else if (card.type === "custom") {
+      if (card.id === "yellow_dust") {
+        let collected = 0;
+        room.players.forEach((p, idx) => {
+          if (idx !== room.gameState.activePlayerIdx && p.gold > 0) {
+            const payAmount = Math.min(p.gold, 50);
+            p.gold -= payAmount;
+            collected += payAmount;
+            checkPlayerBankruptcy(roomCode, idx);
+          }
+        });
+        activeP.gold += collected;
+        actionMsg = `필터 교체비 총 ${collected}골드 획득!`;
+      } else if (card.id === "expo_donation") {
+        let activePlayers = room.players.filter(p => p.gold > 0);
+        if (activePlayers.length > 0) {
+          activePlayers.sort((a, b) => b.gold - a.gold);
+          const richest = activePlayers[0];
+          const poorest = activePlayers[activePlayers.length - 1];
+          
+          const richestIdx = room.players.indexOf(richest);
+          const poorestIdx = room.players.indexOf(poorest);
+          
+          richest.gold = Math.max(0, richest.gold - 100);
+          checkPlayerBankruptcy(roomCode, richestIdx);
+          
+          poorest.gold += 100;
+          actionMsg = `기부와 지원이 완료되었습니다.`;
+          sendSystemChatMessage(roomCode, `📢 가장 부유한 ${richest.name} 님이 100골드를 후원하고, 가장 가난한 ${poorest.name} 님이 100골드 지원금을 받았습니다.`);
+        } else {
+          actionMsg = `활성화된 플레이어가 없습니다.`;
+        }
+      } else if (card.id === "property_crash") {
+        if (activeP.properties.length > 0) {
+          // Sort properties by value in ascending order
+          activeP.properties.sort((a, b) => {
+            const tileA = room.gameState.boardTiles[a];
+            const tileB = room.gameState.boardTiles[b];
+            const valA = tileA.price + (tileA.level - 1) * tileA.upgradePrice;
+            const valB = tileB.price + (tileB.level - 1) * tileB.upgradePrice;
+            return valA - valB;
+          });
+          
+          const tileIdx = activeP.properties.pop(); // Pop the most expensive
+          const tile = room.gameState.boardTiles[tileIdx];
+          const totalVal = tile.price + (tile.level - 1) * tile.upgradePrice;
+          const refund = Math.floor(totalVal / 2);
+
+          tile.owner = null;
+          tile.level = 0;
+          activeP.gold += refund;
+          
+          actionMsg = `${tile.name} 무대 반값 강제 매각 (+${refund}골드)`;
+          sendSystemChatMessage(roomCode, `📉 부동산 대폭락! ${activeP.name} 님의 ${tile.name} 기지가 ${refund}골드에 강제 처분되어 매각되었습니다.`);
+        } else {
+          actionMsg = `소유한 기지가 없어 대폭락 피해를 면했습니다!`;
+        }
+      } else if (card.id === "gold_redistribution") {
+        let activePlayers = room.players.filter(p => p.gold > 0);
+        if (activePlayers.length > 0) {
+          let totalGold = activePlayers.reduce((sum, p) => sum + p.gold, 0);
+          let fairShare = Math.floor(totalGold / activePlayers.length);
+          activePlayers.forEach(p => {
+            p.gold = fairShare;
+          });
+          actionMsg = `전체 골드를 균등 분배 완료!`;
+          sendSystemChatMessage(roomCode, `⚖️ 에너지 균형! 생존 플레이어들의 골드가 각 ${fairShare}골드로 평등하게 분배되었습니다.`);
+        } else {
+          actionMsg = `활성화된 플레이어가 없습니다.`;
+        }
+      } else if (card.id === "property_tax") {
+        let propertyCount = activeP.properties.length;
+        let tax = propertyCount * 20;
+        activeP.gold = Math.max(0, activeP.gold - tax);
+        actionMsg = `기지 점검 수수료 ${tax}골드 지불!`;
+        checkPlayerBankruptcy(roomCode, room.gameState.activePlayerIdx);
+      } else if (card.id === "property_bonus") {
+        let propertyCount = activeP.properties.length;
+        let bonus = propertyCount * 50;
+        activeP.gold += bonus;
+        actionMsg = `특허권 기술료 ${bonus}골드 획득!`;
+      }
     }
 
     sendSystemChatMessage(roomCode, `🃏 찬스 발동 [${card.title}]: ${card.description}`);
@@ -628,6 +782,194 @@ io.on("connection", (socket) => {
   // End Chance turn
   socket.on("finishChanceTurn", ({ roomCode }) => {
     io.to(roomCode).emit("closeChanceModal");
+    endTurn(roomCode);
+  });
+
+  // Draw Special Card (서양음악사 스페셜 - revised)
+  socket.on("drawSpecialCard", ({ roomCode }) => {
+    const room = rooms.get(roomCode);
+    if (!room) return;
+
+    const activeP = room.players[room.gameState.activePlayerIdx];
+    if (activeP.socketId !== socket.id) return;
+
+    // Roll probability
+    const r = Math.random();
+    let card = null;
+
+    if (r < 0.04 && (room.gameState.discountTakeoverCount || 0) < 1) {
+      card = serverSpecialCards.find(c => c.id === "property_discount_takeover");
+      room.gameState.discountTakeoverCount = (room.gameState.discountTakeoverCount || 0) + 1;
+    } else if (r >= 0.04 && r < 0.09) {
+      card = serverSpecialCards.find(c => c.id === "gold_double_5");
+    } else if (r >= 0.09 && r < 0.14) {
+      card = serverSpecialCards.find(c => c.id === "gold_half_5");
+    } else {
+      // 86% pool shared equally among: gold_gain_300, gold_donate_300, property_upgrade, move_to_trap
+      const normalIds = ["gold_gain_300", "gold_donate_300", "property_upgrade", "move_to_trap"];
+      const selectedId = normalIds[Math.floor(Math.random() * normalIds.length)];
+      card = serverSpecialCards.find(c => c.id === selectedId);
+    }
+
+    // Fallback if card is still null (e.g. if r < 0.04 but discountTakeoverCount is already >= 1)
+    if (!card) {
+      const normalIds = ["gold_gain_300", "gold_donate_300", "property_upgrade", "move_to_trap"];
+      const selectedId = normalIds[Math.floor(Math.random() * normalIds.length)];
+      card = serverSpecialCards.find(c => c.id === selectedId);
+    }
+
+    let actionMsg = "";
+    let options = null;
+
+    if (card.id === "gold_gain_300") {
+      activeP.gold += 300;
+      actionMsg = "+300골드 획득";
+    } 
+    else if (card.id === "gold_donate_300") {
+      activeP.gold = Math.max(0, activeP.gold - 300);
+      checkPlayerBankruptcy(roomCode, room.gameState.activePlayerIdx);
+      actionMsg = "300골드 기부";
+    } 
+    else if (card.id === "property_discount_takeover") {
+      options = [];
+      room.gameState.boardTiles.forEach((tile, index) => {
+        // Must be owned by an opponent, and level < 4 (no landmark)
+        if (tile.owner !== null && tile.owner !== room.gameState.activePlayerIdx && tile.level < 4) {
+          const originalValue = tile.price + (tile.level - 1) * tile.upgradePrice;
+          let multiplier = 2.0;
+          if (tile.level === 1) multiplier = 1.5;
+          else if (tile.level === 3) multiplier = 2.5;
+          
+          // Apply round multiplier
+          const turnCount = room.gameState.turnCount || 1;
+          const roundMult = getRoundMultiplier(turnCount);
+          const normalTakeoverCost = Math.floor(originalValue * multiplier * roundMult);
+          const cost = Math.floor(normalTakeoverCost * 0.5); // 50% discount
+          const ownerName = room.players[tile.owner].name;
+          options.push({
+            index: index,
+            name: tile.name,
+            ownerName: ownerName,
+            cost: cost
+          });
+        }
+      });
+      actionMsg = "반값 인수권 획득";
+    } 
+    else if (card.id === "property_upgrade") {
+      options = [];
+      activeP.properties.forEach(tileIdx => {
+        const tile = room.gameState.boardTiles[tileIdx];
+        if (tile && tile.level < 4) {
+          options.push({
+            index: tileIdx,
+            name: tile.name,
+            level: tile.level
+          });
+        }
+      });
+      actionMsg = "음악 무대 무료 1단계 업그레이드 기회 획득";
+    } 
+    else if (card.id === "move_to_trap") {
+      activeP.position = 8;
+      activeP.isTrapped = true;
+      activeP.trappedTurns = 3;
+      actionMsg = "4분 33초의 방으로 전송";
+    } 
+    else if (card.id === "gold_double_5") {
+      const bonus = activeP.gold;
+      activeP.gold += bonus;
+      actionMsg = "보유 골드 2배 복제 성공";
+    } 
+    else if (card.id === "gold_half_5") {
+      const penalty = Math.floor(activeP.gold / 2);
+      activeP.gold -= penalty;
+      checkPlayerBankruptcy(roomCode, room.gameState.activePlayerIdx);
+      actionMsg = "보유 골드 반토막 소실";
+    }
+
+    sendSystemChatMessage(roomCode, `💥 스페셜 찬스 발동 [${card.title}]: ${card.description}`);
+
+    io.to(roomCode).emit("specialCardDrawn", { card, actionMsg, options });
+  });
+
+  socket.on("finishSpecialTurn", ({ roomCode }) => {
+    io.to(roomCode).emit("closeSpecialModal");
+    endTurn(roomCode);
+  });
+
+  // Handle choice for free level upgrade from property_upgrade special card
+  socket.on("specialSelectUpgrade", ({ roomCode, tileIndex }) => {
+    const room = rooms.get(roomCode);
+    if (!room) return;
+
+    const activeP = room.players[room.gameState.activePlayerIdx];
+    if (activeP.socketId !== socket.id) return;
+
+    const tile = room.gameState.boardTiles[tileIndex];
+    if (tile.owner !== room.gameState.activePlayerIdx) return;
+    if (tile.level >= 4) return;
+
+    tile.level += 1;
+    const lvNames = ["공터", "간이 무대", "공작의 음악실", "대형 콘서트홀", "월드 스타디움 (랜드마크)"];
+    sendSystemChatMessage(roomCode, `💎 스페셜 업그레이드! ${activeP.name} 님이 ${tile.name} 무대를 '${lvNames[tile.level]}'으로 무료 업그레이드했습니다.`);
+
+    io.to(roomCode).emit("closeSpecialModal");
+    io.to(roomCode).emit("roomStateUpdate", room);
+    endTurn(roomCode);
+  });
+
+  // Handle choice for half-price takeover from property_discount_takeover special card
+  socket.on("specialSelectTakeover", ({ roomCode, tileIndex }) => {
+    const room = rooms.get(roomCode);
+    if (!room) return;
+
+    const activeP = room.players[room.gameState.activePlayerIdx];
+    if (activeP.socketId !== socket.id) return;
+
+    const tile = room.gameState.boardTiles[tileIndex];
+    if (tile.owner === null || tile.owner === room.gameState.activePlayerIdx || tile.level >= 4) return;
+
+    const originalValue = tile.price + (tile.level - 1) * tile.upgradePrice;
+    let multiplier = 2.0;
+    if (tile.level === 1) multiplier = 1.5;
+    else if (tile.level === 3) multiplier = 2.5;
+    
+    // Apply round multiplier
+    const turnCount = room.gameState.turnCount || 1;
+    const roundMult = getRoundMultiplier(turnCount);
+    const normalTakeoverCost = Math.floor(originalValue * multiplier * roundMult);
+    const discountCost = Math.floor(normalTakeoverCost * 0.5);
+
+    if (activeP.gold >= discountCost) {
+      const ownerIndex = tile.owner;
+      const owner = room.players[ownerIndex];
+
+      activeP.gold -= discountCost;
+      owner.gold += discountCost;
+
+      // Transfer ownership
+      owner.properties = owner.properties.filter(idx => idx !== tileIndex);
+      activeP.properties.push(tileIndex);
+      tile.owner = room.gameState.activePlayerIdx;
+
+      sendSystemChatMessage(roomCode, `💳 스페셜 인수! ${activeP.name} 님이 ${owner.name} 님의 ${tile.name} 무대를 반값인수(${discountCost}골드) 하였습니다.`);
+
+      // Check if previous owner is bankrupt
+      checkPlayerBankruptcy(roomCode, ownerIndex);
+      checkPlayerBankruptcy(roomCode, room.gameState.activePlayerIdx);
+
+      // Notify of takeover
+      io.to(roomCode).emit("propertyTakeoverNotification", {
+        buyerIdx: room.gameState.activePlayerIdx,
+        sellerIdx: ownerIndex,
+        tileIndex: tileIndex,
+        cost: discountCost
+      });
+    }
+
+    io.to(roomCode).emit("closeSpecialModal");
+    io.to(roomCode).emit("roomStateUpdate", room);
     endTurn(roomCode);
   });
 
@@ -703,7 +1045,7 @@ function endTurn(roomCode) {
     activeP.position = 8;
     activeP.isTrapped = true;
     activeP.trappedTurns = 3;
-    sendSystemChatMessage(roomCode, `🚨 더블 3회 연속 달성! ${activeP.name} 님이 과도한 시간 질주로 4분 33초의 방에 갇혔습니다.`);
+    sendSystemChatMessage(roomCode, `🚨 더블 3회 연속 달성! ${activeP.name} 님이 과도한 연주 몰입으로 4분 33초의 방에 갇혔습니다.`);
   } 
   // 2. If double rolled, keep turn (unless they went bankrupt, or trapped on this turn)
   else if (room.gameState.doubleCount > 0 && activeP.gold > 0 && !activeP.isTrapped) {
@@ -756,7 +1098,7 @@ function checkPlayerBankruptcy(roomCode, playerIndex) {
     
     // Liquidate properties
     if (p.properties.length > 0) {
-      sendSystemChatMessage(roomCode, `⚠️ ${p.name} 님이 파산 위기로 무대를 반값 매각합니다.`);
+      sendSystemChatMessage(roomCode, `⚠️ ${p.name} 님이 파산 위기로 음악 무대를 반값 매각합니다.`);
       p.properties.sort((a, b) => room.gameState.boardTiles[a].price - room.gameState.boardTiles[b].price);
       
       while (p.gold <= 0 && p.properties.length > 0) {

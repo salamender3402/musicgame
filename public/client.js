@@ -14,6 +14,15 @@ let audioCtx = null;
 let quizTimerInterval = null;
 let warpTargetSelected = null;
 let tollModalTimeout = null;
+let previousPlayerGold = [1500, 1500, 1500, 1500];
+
+// 3D Visual player token animation positions
+const playerVisualPositions = [
+  { x: null, y: null, targetX: null, targetY: null, isAnimating: false, animId: null, startTime: 0 },
+  { x: null, y: null, targetX: null, targetY: null, isAnimating: false, animId: null, startTime: 0 },
+  { x: null, y: null, targetX: null, targetY: null, isAnimating: false, animId: null, startTime: 0 },
+  { x: null, y: null, targetX: null, targetY: null, isAnimating: false, animId: null, startTime: 0 }
+];
 
 // BGM State
 const bgmPlayer = new Audio();
@@ -409,6 +418,14 @@ function playersSyncDashboard(room) {
       
       const p = room.players[i];
       document.getElementById(`p${i}-name`).innerText = p.name;
+      
+      // Calculate gold change and trigger animation
+      const oldGold = previousPlayerGold[i] !== undefined ? previousPlayerGold[i] : p.gold;
+      if (p.gold !== oldGold) {
+        triggerGoldChangeAnimation(i, p.gold - oldGold);
+      }
+      previousPlayerGold[i] = p.gold;
+
       document.getElementById(`p${i}-gold`).innerText = p.gold.toLocaleString();
 
       // calculate estate value
@@ -490,23 +507,188 @@ function boardTilesSync(room) {
   updateTokenDisplay(room);
 }
 
-// Render player tokens on board
+// Helper: Calculate dynamic multiplier based on rounds (turnCount) to manage gold inflation
+function getRoundMultiplier(turnCount) {
+  if (!turnCount || turnCount <= 9) return 1.0;
+  if (turnCount <= 14) {
+    // Round 10 to 14: scale from 1.2 to 2.0
+    return 1.0 + (turnCount - 9) * 0.2;
+  }
+  // Round 15+: scale from 2.0 + 0.45 per round (2.45 at Rd 15, 4.70 at Rd 20)
+  return 2.0 + (turnCount - 14) * 0.45;
+}
+
+// Helper: Calculate center coordinates of a tile relative to game-board container with player offset
+function getTileCenterCoordinates(position, playerIndex) {
+  const boardEl = document.getElementById("game-board");
+  const tileEl = document.querySelector(`.tile[data-index="${position}"]`);
+  if (!boardEl || !tileEl) return { x: 0, y: 0 };
+
+  const boardRect = boardEl.getBoundingClientRect();
+  const tileRect = tileEl.getBoundingClientRect();
+
+  // Center of the tile relative to the board
+  let x = tileRect.left - boardRect.left + tileRect.width / 2;
+  let y = tileRect.top - boardRect.top + tileRect.height / 2;
+
+  // Add offset to avoid direct overlapping of multiple players on same tile
+  const offsetX = (playerIndex % 2 === 0 ? -9 : 9);
+  const offsetY = (playerIndex < 2 ? -9 : 9) + 4;
+
+  return { x: x + offsetX, y: y + offsetY };
+}
+
+// Helper: Triggers requestAnimationFrame parabolic jump for player tokens
+function triggerTokenJump(playerIndex, startPosition, endPosition) {
+  const visual = playerVisualPositions[playerIndex];
+  const tokenEl = document.getElementById(`token-3d-${playerIndex}`);
+  if (!tokenEl) return;
+
+  // Cancel any existing animation frame
+  if (visual.animId) {
+    cancelAnimationFrame(visual.animId);
+  }
+
+  visual.isAnimating = true;
+
+  // Starting visual coordinates (interrupted mid-movement or starting from startPosition)
+  const startX = visual.x !== null ? visual.x : getTileCenterCoordinates(startPosition, playerIndex).x;
+  const startY = visual.y !== null ? visual.y : getTileCenterCoordinates(startPosition, playerIndex).y;
+
+  // Target end coordinates
+  const targetCoords = getTileCenterCoordinates(endPosition, playerIndex);
+  const endX = targetCoords.x;
+  const endY = targetCoords.y;
+
+  const jumpDuration = 250; // 250ms jump duration
+  const bounceDuration = 100; // 100ms bounce-out cushion duration
+  const totalDuration = jumpDuration + bounceDuration;
+  const maxJumpHeight = 45; // Max visual elevation height in pixels
+
+  const startTime = performance.now();
+  visual.startTime = startTime;
+
+  // Play "step" sound exactly at 120ms (peak of the jump)
+  setTimeout(() => {
+    // Verify player is still jumping and it's the exact same jump animation
+    if (visual.isAnimating && visual.startTime === startTime) {
+      playSynthSound("step");
+    }
+  }, 120);
+
+  function tick(now) {
+    const elapsed = now - startTime;
+
+    if (elapsed >= totalDuration) {
+      // Completed animation sequence
+      visual.x = endX;
+      visual.y = endY;
+      visual.isAnimating = false;
+      visual.animId = null;
+
+      tokenEl.style.left = `${endX}px`;
+      tokenEl.style.top = `${endY}px`;
+      tokenEl.style.transform = `translate(-50%, -100%)`;
+      return;
+    }
+
+    let x = endX;
+    let y = endY;
+    let z = 0;
+
+    if (elapsed < jumpDuration) {
+      // 1. Parabolic jump phase (Sine wave)
+      const p = elapsed / jumpDuration;
+      x = startX + (endX - startX) * p;
+      y = startY + (endY - startY) * p;
+      z = Math.sin(p * Math.PI) * maxJumpHeight;
+    } else {
+      // 2. Bounce out landing cushion phase (Decaying Sine wave)
+      const bp = (elapsed - jumpDuration) / bounceDuration;
+      const decay = 1 - bp;
+      z = -Math.sin(bp * Math.PI) * 6 * decay; // bounce squish downwards
+    }
+
+    // Keep visual representation coordinates updated
+    visual.x = x;
+    visual.y = y;
+
+    tokenEl.style.left = `${x}px`;
+    tokenEl.style.top = `${y}px`;
+    tokenEl.style.transform = `translate(-50%, -100%) translateY(${-z}px)`;
+
+    visual.animId = requestAnimationFrame(tick);
+  }
+
+  visual.animId = requestAnimationFrame(tick);
+}
+
+// Render player tokens on board (Supports 3D coordinates + image 에셋)
 function updateTokenDisplay(room) {
-  // Clear previous tokens
+  // Clear previous 2D player lists inside tiles
   for (let i = 0; i < 32; i++) {
     const container = document.getElementById(`tile-players-${i}`);
     if (container) container.innerHTML = "";
   }
 
-  // Draw connected tokens
+  const boardEl = document.getElementById("game-board");
+  if (!boardEl) return;
+
+  // First, hide all 3D tokens
+  for (let i = 0; i < 4; i++) {
+    const tokenEl = document.getElementById(`token-3d-${i}`);
+    if (tokenEl) tokenEl.style.display = "none";
+  }
+
+  // Draw connected tokens on board
   room.players.forEach((p, idx) => {
-    const container = document.getElementById(`tile-players-${p.position}`);
-    if (container) {
-      const token = document.createElement("div");
-      token.className = `token token-p${idx}`;
-      token.title = p.name;
-      token.innerText = `P${idx + 1}`;
-      container.appendChild(token);
+    let tokenEl = document.getElementById(`token-3d-${idx}`);
+    if (!tokenEl) {
+      tokenEl = document.createElement("div");
+      tokenEl.id = `token-3d-${idx}`;
+      tokenEl.className = `token-3d token-3d-p${idx}`;
+      
+      const innerEl = document.createElement("div");
+      innerEl.className = "token-3d-inner";
+      innerEl.innerText = 'P' + (idx + 1);
+      tokenEl.appendChild(innerEl);
+
+      const nameplateEl = document.createElement("div");
+      nameplateEl.className = "token-nameplate";
+      tokenEl.appendChild(nameplateEl);
+      
+      boardEl.appendChild(tokenEl);
+    }
+
+    tokenEl.title = p.name;
+    tokenEl.style.display = "block"; // Make sure present players have visible tokens
+
+    // Update nameplate text (P1: Nickname)
+    let nameplateEl = tokenEl.querySelector(".token-nameplate");
+    if (!nameplateEl) {
+      nameplateEl = document.createElement("div");
+      nameplateEl.className = "token-nameplate";
+      tokenEl.appendChild(nameplateEl);
+    }
+    nameplateEl.innerText = `P${idx + 1}: ${p.name}`;
+
+    const tileCoords = getTileCenterCoordinates(p.position, idx);
+    const visual = playerVisualPositions[idx];
+
+    if (visual.x === null) {
+      // Initialize starting position immediately without visual jumps
+      visual.x = tileCoords.x;
+      visual.y = tileCoords.y;
+      tokenEl.style.left = `${tileCoords.x}px`;
+      tokenEl.style.top = `${tileCoords.y}px`;
+      tokenEl.style.transform = `translate(-50%, -100%)`;
+    } else if (!visual.isAnimating) {
+      // Snap to tile center coordinates if not in step-by-step jump mode
+      visual.x = tileCoords.x;
+      visual.y = tileCoords.y;
+      tokenEl.style.left = `${tileCoords.x}px`;
+      tokenEl.style.top = `${tileCoords.y}px`;
+      tokenEl.style.transform = `translate(-50%, -100%)`;
     }
   });
 }
@@ -557,6 +739,31 @@ socket.on("diceRolled", ({ playerIndex, rolls, total, isDouble, newPosition, pas
 
     const p = currentRoom.players[playerIndex];
     rollResultTextEl.innerText = `주사위 결과: ${rolls[0]} + ${rolls[1]} = ${total}`;
+
+    // Define movement logic function
+    const startMoving = () => {
+      if (isEscapeRoll) {
+        if (isDouble) {
+          animateSteps(playerIndex, total, false, () => {
+            isMoving = false;
+          });
+        } else {
+          isMoving = false;
+        }
+        return;
+      }
+
+      // Animate token step-by-step
+      animateSteps(playerIndex, total, passedStart, () => {
+        isMoving = false;
+        
+        // Resolve land triggers ONLY on the active player client to prevent duplicate server emission
+        if (playerIndex === myPlayerIndex) {
+          socket.emit("clientFinishedMoving", { roomCode: myRoomCode });
+        }
+      });
+    };
+
     if (isDouble) {
       rollResultTextEl.innerText += " (더블!)";
       
@@ -567,30 +774,14 @@ socket.on("diceRolled", ({ playerIndex, rolls, total, isDouble, newPosition, pas
         playSynthSound("success");
         setTimeout(() => {
           doubleModal.classList.remove("active");
+          startMoving(); // Start moving after the double modal fades out
         }, 1800);
-      }
-    }
-
-    if (isEscapeRoll) {
-      if (isDouble) {
-        animateSteps(playerIndex, total, false, () => {
-          isMoving = false;
-        });
       } else {
-        isMoving = false;
+        startMoving();
       }
-      return;
+    } else {
+      startMoving(); // Start moving immediately
     }
-
-    // Animate token step-by-step
-    animateSteps(playerIndex, total, passedStart, () => {
-      isMoving = false;
-      
-      // Resolve land triggers ONLY on the active player client to prevent duplicate server emission
-      if (playerIndex === myPlayerIndex) {
-        socket.emit("clientFinishedMoving", { roomCode: myRoomCode });
-      }
-    });
 
   }, 600);
 });
@@ -607,7 +798,7 @@ function setDiceFace(cubeEl, value) {
   cubeEl.style.transform = `translateZ(-20px) ${rotMap[value]}`;
 }
 
-// Step-by-step local animation
+// Step-by-step local animation (Ting-ting parabolic jump mode)
 function animateSteps(playerIndex, steps, passedStart, callback) {
   const p = currentRoom.players[playerIndex];
   let currentSteps = 0;
@@ -620,16 +811,19 @@ function animateSteps(playerIndex, steps, passedStart, callback) {
       return;
     }
 
+    const startPosition = p.position;
     p.position = (p.position + direction + 32) % 32;
+    const endPosition = p.position;
     currentSteps++;
 
-    playSynthSound("step");
-    updateTokenDisplay(currentRoom);
+    // Trigger the parabolic 3D Tween jump!
+    triggerTokenJump(playerIndex, startPosition, endPosition);
 
     // Visual START warning check (START index is 0)
     if (direction === 1 && p.position === 0 && passedStart) {
-      // Play a quick chime
-      playSynthSound("success");
+      setTimeout(() => {
+        playSynthSound("success");
+      }, 250); // Play success chime when landing on start
     }
 
     setTimeout(takeStep, 250);
@@ -656,7 +850,7 @@ socket.on("triggerTileAction", ({ tile }) => {
       break;
 
     case "warp": {
-      // Land on 타임머신 -> Show confirmation modal
+      // Land on 상태 변화 터널 -> Show confirmation modal
       const warpLandModal = document.getElementById("warp-land-modal");
       const warpConfirmBtn = document.getElementById("warp-land-confirm-btn");
       if (warpLandModal && warpConfirmBtn) {
@@ -673,9 +867,13 @@ socket.on("triggerTileAction", ({ tile }) => {
     }
 
     case "chance":
-    case "chance-corner":
       // Emits card draw request
       socket.emit("drawChance", { roomCode: myRoomCode });
+      break;
+
+    case "chance-corner":
+      // Emits special card draw request
+      socket.emit("drawSpecialCard", { roomCode: myRoomCode });
       break;
 
     case "music":
@@ -698,15 +896,25 @@ socket.on("triggerTileAction", ({ tile }) => {
         document.getElementById("toll-owner-name").innerText = owner.name;
         const lvNames = ["공터", "간이 무대", "공작의 음악실", "대형 콘서트홀", "월드 스타디움 (랜드마크)"];
         document.getElementById("toll-prop-level").innerText = lvNames[tile.level];
-        const tollFee = tile.tolls[tile.level];
+        // Apply round multiplier to the toll fee
+        const turnCount = currentRoom.gameState.turnCount || 1;
+        const roundMult = getRoundMultiplier(turnCount);
+        const baseTollFee = tile.tolls[tile.level];
+        const tollFee = Math.floor(baseTollFee * roundMult);
         document.getElementById("toll-fee").innerText = `${tollFee} Gold`;
 
         // Calculate takeover cost
         const originalValue = tile.price + (tile.level - 1) * tile.upgradePrice;
-        const takeoverCost = originalValue * 2;
+        let multiplier = 2.0;
+        if (tile.level === 1) multiplier = 1.5;
+        else if (tile.level === 3) multiplier = 2.5;
+        
+        // Apply round multiplier to takeover cost
+        const takeoverCost = Math.floor(originalValue * multiplier * roundMult);
         document.getElementById("takeover-cost").innerText = `${takeoverCost} Gold`;
 
         const me = currentRoom.players[myPlayerIndex];
+        document.getElementById("toll-my-gold").innerText = `${me.gold} Gold`;
         const takeoverInfoBox = document.getElementById("takeover-info-box");
         const payOnlyBtn = document.getElementById("toll-pay-only-btn");
         const takeoverBtn = document.getElementById("toll-takeover-btn");
@@ -768,7 +976,7 @@ function triggerArrivalModal(tile) {
   const arrivalConfirmBtn = document.getElementById("arrival-confirm-btn");
 
   if (arrivalModal && arrivalTitle && arrivalConfirmBtn) {
-    arrivalTitle.innerText = `${tile.composer} - '${tile.name}'`;
+    arrivalTitle.innerText = `[무대 도착] ${tile.name}`;
     arrivalModal.classList.add("active");
     playSynthSound("success");
 
@@ -786,16 +994,16 @@ function triggerArrivalModal(tile) {
 function triggerQuizModal(tile) {
   const trivia = tile.trivia;
 
-  let eraK = "바로크 시대";
-  if (tile.era === "classical") eraK = "고전주의 시대";
-  if (tile.era === "romantic") eraK = "낭만주의 시대";
-  if (tile.era === "modern") eraK = "근·현대 시대";
+  let eraK = "입자 운동 및 상태";
+  if (tile.era === "classical") eraK = "열에너지 흡수";
+  if (tile.era === "romantic") eraK = "열에너지 방출";
+  if (tile.era === "modern") eraK = "상태 변화와 생활";
 
   const eraBadge = document.getElementById("quiz-tile-era");
   eraBadge.className = `badge era-badge-${tile.era}`;
   eraBadge.innerText = eraK;
 
-  document.getElementById("quiz-tile-name").innerText = `${tile.composer} '${tile.name}'`;
+  document.getElementById("quiz-tile-name").innerText = `[개념] ${tile.name}`;
   document.getElementById("quiz-question-text").innerText = trivia.question;
 
   const container = document.getElementById("quiz-options-container");
@@ -860,7 +1068,7 @@ function handleQuizSubmission(selectedBtn, chosenOpt, correctAns, tile) {
     selectedBtn.classList.add("correct-choice");
     feedback.className = "quiz-result-feedback correct";
     document.getElementById("quiz-feedback-title").innerText = "정답입니다! 🎉";
-    document.getElementById("quiz-feedback-desc").innerText = "1단계 무대(간이 무대)를 무료로 즉시 건설할 수 있습니다!";
+    document.getElementById("quiz-feedback-desc").innerText = "1단계 음악 무대(간이 무대)를 무료로 즉시 건설할 수 있습니다!";
     playSynthSound("success");
 
     confirmBtn.onclick = () => {
@@ -1023,7 +1231,126 @@ socket.on("closeChanceModal", () => {
   chanceCardEl.onclick = null;
 });
 
-// E. 타임머신 우주여행 워프 (Warp machine)
+// D.5 스페셜 카드 연출 (Special Card)
+const specialModal = document.getElementById("special-modal");
+
+socket.on("specialCardDrawn", ({ card, actionMsg, options }) => {
+  const isMyTurn = currentRoom.gameState.activePlayerIdx === myPlayerIndex;
+  const activeP = currentRoom.players[currentRoom.gameState.activePlayerIdx];
+  const me = currentRoom.players[myPlayerIndex];
+
+  document.getElementById("special-title").innerText = card.title;
+  document.getElementById("special-description").innerText = card.description;
+
+  const frontTitle = document.querySelector("#special-modal .special-card-front h3");
+  const frontSubtitle = document.querySelector("#special-modal .special-card-front p");
+
+  const specialCardEl = document.getElementById("special-card-element");
+  const closeBtn = document.getElementById("special-close-btn");
+  const optionsContainer = document.getElementById("special-options-container");
+
+  if (optionsContainer) {
+    optionsContainer.innerHTML = "";
+  }
+
+  if (isMyTurn) {
+    if (frontTitle) frontTitle.innerText = "서양음악사 스페셜";
+    if (frontSubtitle) frontSubtitle.innerText = "초정밀 고위험 카드를 눌러 뒤집으세요";
+    document.getElementById("special-card-badge").innerText = "스페셜 카드";
+    
+    if (options && options.length > 0) {
+      closeBtn.classList.add("hidden");
+    } else {
+      closeBtn.classList.remove("hidden");
+    }
+
+    specialCardEl.classList.remove("flipped");
+    specialModal.classList.add("active");
+    playSynthSound("warp");
+
+    specialCardEl.onclick = () => {
+      specialCardEl.classList.add("flipped");
+      playSynthSound("success");
+      specialCardEl.onclick = null;
+
+      if (options && options.length > 0 && optionsContainer) {
+        options.forEach(opt => {
+          const btn = document.createElement("button");
+          btn.className = "btn btn-primary";
+          btn.style.margin = "4px 0";
+          btn.style.width = "100%";
+          btn.style.fontSize = "12px";
+          btn.style.padding = "8px";
+
+          if (card.id === "property_upgrade") {
+            btn.innerText = `[${opt.name}] Lv.${opt.level} ➔ Lv.${opt.level + 1} 업그레이드`;
+            btn.onclick = () => {
+              socket.emit("specialSelectUpgrade", { roomCode: myRoomCode, tileIndex: opt.index });
+            };
+          } else if (card.id === "property_discount_takeover") {
+            const canAfford = me.gold >= opt.cost;
+            btn.innerText = `[${opt.name}] (${opt.ownerName} 소유) - ${opt.cost}G로 인수`;
+            btn.disabled = !canAfford;
+            if (!canAfford) {
+              btn.style.opacity = "0.5";
+              btn.innerText += " (골드 부족)";
+            }
+            btn.onclick = () => {
+              socket.emit("specialSelectTakeover", { roomCode: myRoomCode, tileIndex: opt.index });
+            };
+          }
+          optionsContainer.appendChild(btn);
+        });
+      }
+    };
+
+    closeBtn.onclick = () => {
+      socket.emit("finishSpecialTurn", { roomCode: myRoomCode });
+    };
+  } else {
+    // Other players see warning/alert
+    if (frontTitle) frontTitle.innerText = `${activeP.name} 님의 스페셜 카드`;
+    if (frontSubtitle) frontSubtitle.innerText = "카드가 열리기를 대기 중...";
+    document.getElementById("special-card-badge").innerText = `${activeP.name} 님의 스페셜`;
+    closeBtn.classList.add("hidden");
+
+    specialCardEl.classList.remove("flipped");
+    specialModal.classList.add("active");
+
+    setTimeout(() => {
+      if (specialModal.classList.contains("active")) {
+        specialCardEl.classList.add("flipped");
+        playSynthSound("success");
+        
+        if (options && options.length > 0 && optionsContainer) {
+          options.forEach(opt => {
+            const p = document.createElement("p");
+            p.style.fontSize = "11px";
+            p.style.color = "#aaa";
+            p.style.margin = "2px 0";
+            if (card.id === "property_upgrade") {
+              p.innerText = `• ${opt.name} (Lv.${opt.level} ➔ Lv.${opt.level + 1})`;
+            } else if (card.id === "property_discount_takeover") {
+              p.innerText = `• ${opt.name} (${opt.ownerName} 소유) - ${opt.cost}G`;
+            }
+            optionsContainer.appendChild(p);
+          });
+        }
+      }
+    }, 1500);
+
+    specialCardEl.onclick = null;
+  }
+});
+
+socket.on("closeSpecialModal", () => {
+  specialModal.classList.remove("active");
+  const specialCardEl = document.getElementById("special-card-element");
+  specialCardEl.classList.remove("flipped");
+  specialCardEl.onclick = null;
+});
+
+// E. 상태 변화 터널 도약 (Warp machine)
 warpActionBtn.addEventListener("click", () => {
   openWarpSelection();
 });
@@ -1042,7 +1369,7 @@ function openWarpSelection() {
   });
 
   document.getElementById("warp-confirm-btn").disabled = true;
-  document.getElementById("warp-target-preview").innerText = "이동할 무대 칸을 선택해 주세요.";
+  document.getElementById("warp-target-preview").innerText = "이동할 음악 무대 칸을 선택해 주세요.";
 }
 
 function selectWarpTarget(tileIndex) {
@@ -1229,24 +1556,24 @@ socket.on("propertyTakeoverNotification", ({ buyerIdx, sellerIdx, tileIndex, cos
 
   if (myPlayerIndex === sellerIdx) {
     // I am the victim (lost property)
-    titleEl.innerText = "무대를 강탈당했습니다! 😭";
-    descEl.innerText = `${buyer.name} 님이 당신의 소중한 무대를 강제 인수하였습니다.`;
+    titleEl.innerText = "음악 무대를 강탈당했습니다! 😭";
+    descEl.innerText = `${buyer.name} 님이 당신의 소중한 음악 무대를 강제 인수하였습니다.`;
     priceEl.innerText = `+${cost} G`;
     priceEl.className = "text-green"; // Green since they get gold
     if (alertIcon) alertIcon.className = "fa-solid fa-house-circle-exclamation";
     playSynthSound("fail");
   } else if (myPlayerIndex === buyerIdx) {
     // I am the buyer
-    titleEl.innerText = "무대 인수 완료! 💳";
-    descEl.innerText = `${seller.name} 님의 무대를 돈으로 사서 내 것으로 만들었습니다!`;
+    titleEl.innerText = "음악 무대 인수 완료! 💳";
+    descEl.innerText = `${seller.name} 님의 음악 무대를 돈을 지불하고 내 것으로 만들었습니다!`;
     priceEl.innerText = `-${cost} G`;
     priceEl.className = "text-red";
     if (alertIcon) alertIcon.className = "fa-solid fa-house-circle-check";
     playSynthSound("success");
   } else {
     // Spectator
-    titleEl.innerText = "무대 주인 바뀜! 🏛️";
-    descEl.innerText = `${buyer.name} 님이 ${seller.name} 님의 무대를 인수했습니다.`;
+    titleEl.innerText = "음악 무대 주인 바뀜! 🏛️";
+    descEl.innerText = `${buyer.name} 님이 ${seller.name} 님의 음악 무대를 인수했습니다.`;
     priceEl.innerText = `${cost} G`;
     priceEl.className = "text-gold";
     if (alertIcon) alertIcon.className = "fa-solid fa-people-arrows";
@@ -1274,3 +1601,40 @@ socket.on("resolveLandedTile", () => {
     }
   }
 });
+
+// 11. GOLD CHANGE ANIMATION EFFECT
+function triggerGoldChangeAnimation(playerIndex, amount) {
+  if (amount === 0) return;
+
+  const panel = document.getElementById(`panel-p${playerIndex}`);
+  if (!panel) return;
+
+  const playerCard = panel.querySelector(".player-card");
+  if (!playerCard) return;
+
+  // Create floating indicator bubble
+  const indicator = document.createElement("div");
+  indicator.className = "gold-change-indicator " + (amount > 0 ? "positive" : "negative");
+  indicator.innerText = (amount > 0 ? "+" : "") + amount.toLocaleString() + " G";
+
+  // Position it inside the player panel card (relative boundaries)
+  indicator.style.right = "25px";
+  indicator.style.bottom = "65px";
+
+  playerCard.appendChild(indicator);
+
+  // Auto clean up after animation finishes
+  setTimeout(() => {
+    indicator.remove();
+  }, 1500);
+
+  // Flash the gold element value text
+  const goldValEl = document.getElementById(`p${playerIndex}-gold`);
+  if (goldValEl) {
+    const flashClass = amount > 0 ? "flash-gold-gain" : "flash-gold-loss";
+    goldValEl.classList.add(flashClass);
+    setTimeout(() => {
+      goldValEl.classList.remove(flashClass);
+    }, 1000);
+  }
+}
